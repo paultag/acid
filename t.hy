@@ -7,8 +7,6 @@
     (get {:red-line  "red"
           :blue-line "blue"} line)))
 
-
 (trip
-  (on :update-feed
-      (print (.json (.get requests (get-endpoint-url event)))))
+  (on :update-feed (print (.json (.get requests (get-endpoint-url event)))))
   (every 1 minute (emit :update-feed :red-line)))
