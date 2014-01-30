@@ -23,11 +23,15 @@
                  [(= order 'hour)    `(* ~time 3600)]
                  [true (macro-error order "Unknown magnitude")])]]
       `(do
-        (defn ~fnn [loop]
+        (defn ~fnn []
           (let [[self ~fnn]]
-            ~@body)
-          (.call-later loop ~s-time ~fnn loop))
-        (.call-soon loop ~fnn loop)))))
+            ~@body
+            (echo ~s-time)))
+        (.call-soon loop ~fnn)))))
+
+
+(defmacro echo [time &rest args]
+  `(.call-later loop ~time self ~@args))
 
 
 (defmacro on [event &rest body]
