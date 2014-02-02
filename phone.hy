@@ -7,14 +7,9 @@
 (defn start-server [] (adb "start-server"))
 
 
-(def *phones* {})
 (def *phone-info* {})
 (def *phone-battery* {})
 
-
-;; events:
-;;   poll-phones
-;;      poll for new phones.
 
 (defn get-attached-devices []
   (genexpr
@@ -68,9 +63,17 @@
       (emit :poll-phone serial)))
 
   (on :poll-phone
-    (emit
-      :phone-battery-updated
-      {"battery" (update-phone-battery event) "serial" event}))
+    (try
+      (emit :phone-battery-updated
+        {"battery" (update-phone-battery event) "serial" event})
+    (catch [e ErrorReturnCode-255]
+      (emit :phone-unplugged event)
+      (.pop *phone-battery* event)
+      (.pop *phone-info* event)
+      (emit :phone-removed event))))
+
+  (on :phone-unplugged
+    (print "Unplugged" event))
 
   (on :phone-battery-updated
     (print (get-display-name (get event "serial"))
@@ -79,6 +82,6 @@
            "percent battery"))
 
   ; system triggers
-  (every .5 minute (emit :poll-phones nil))
+  (every .5 seconds (emit :poll-phones nil))
   (on :startup (start-server))
   (emit :startup nil))
