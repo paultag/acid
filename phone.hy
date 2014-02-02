@@ -37,7 +37,6 @@
                        (!= x "")))
       (.split (adb "-s" serial "shell" "dumpsys" "battery") "\r\n"))]))
 
-
 (defn update-phone-battery [serial]
   (assoc *phone-battery* serial (dict (get-device-battery-info serial)))
   (get *phone-info* serial))
@@ -67,13 +66,11 @@
       (emit :phone-battery-updated
         {"battery" (update-phone-battery event) "serial" event})
     (catch [e ErrorReturnCode-255]
-      (emit :phone-unplugged event)
       (.pop *phone-battery* event)
       (.pop *phone-info* event)
-      (emit :phone-removed event))))
+      (emit :phone-unplugged event))))
 
-  (on :phone-unplugged
-    (print "Unplugged" event))
+  (on :phone-unplugged (print "Unplugged" event))
 
   (on :phone-battery-updated
     (print (get-display-name (get event "serial"))

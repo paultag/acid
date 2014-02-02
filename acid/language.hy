@@ -6,11 +6,15 @@
 (defmacro/g! trip [&rest body]
   `(do
     (import collections asyncio)
-    (let [[loop (.get-event-loop asyncio)]
-          [handlers (.defaultdict collections list)]]
+    (let [[loop (.get-event-loop asyncio)]]
+      (setattr loop "handlers" (.defaultdict collections list))
       ~@body
+      (emit :startup loop)
       (.run-forever loop))))
 
+(defmacro stream [client remote port]
+  `(.run-until-complete loop
+    (.create-connection loop ~client ~remote ~port)))
 
 (defmacro every [time order &rest body]
   (with-gensyms [fnn]
@@ -35,10 +39,14 @@
 
 
 (defmacro on [event &rest body]
-  `(.append (get handlers ~event)
+  `(.append (get loop.handlers ~event)
     (fn [event] ~@body)))
 
 
+(defmacro run [&rest body]
+  `(.call-later loop (fn [] ~@body)))
+
+
 (defmacro/g! emit [event e]
-  `(for [~g!handler (get handlers ~event)]
+  `(for [~g!handler (get loop.handlers ~event)]
     (apply loop.call-soon [~g!handler ~e])))
