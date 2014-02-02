@@ -6,7 +6,7 @@
   (.loads json (.decode
       (.read-all (.Telnet telnetlib remote port)) "utf-8")))
 
-(def *servers* {"dicklord" ["localhost" 3030]})
+(def *servers* {"doorbell" ["localhost" 3030]})
 (def *status* {})
 
 
