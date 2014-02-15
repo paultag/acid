@@ -1,50 +1,76 @@
-;;;;;
-;;;;;
-;;;;;
+
 
 
 (defmacro/g! trip [&rest body]
-  `(progn ;; XXX: Uh, this is horseshit. (progn) is going away.
-    ;;            this needs to be a recursive-replace for sub-do
-    ;;            or something.
-    (import collections asyncio)
-    (let [[loop (.get-event-loop asyncio)]]
-      (setattr loop "handlers" (.defaultdict collections list))
-      ~@body
-      (.run-forever loop))))
+  "Root node. Sets up the async world."
+  `(do (import collections asyncio)
+       (let [[loop (.get-event-loop asyncio)]]
+         (setattr loop "handlers" (.defaultdict collections list))
+         ~@body
+         (run (emit :startup nil))
+         (.run-forever loop))))
 
-(defmacro -acid-time [time order]
-  (cond [(= order 'seconds) (* time 1)]
-        [(= order 'second)  (* time 1)]
-        [(= order 'minutes) (* time 60)]
-        [(= order 'minute)  (* time 60)]
-        [(= order 'hours)   (* time 3600)]
-        [(= order 'hour)    (* time 3600)]))
-
-(defmacro run [func &rest args]
-  "Run a function async-like"
-  `(.call-soon loop ~func ~@args))
-
-(defmacro run-in [time order func &rest args]
-  "Run a function in a few time"
-  `(.call-later loop (-acid-time ~time ~order) ~func ~@args))
 
 (defmacro defns [sig &rest body]
+  "Define a function with a `self' pointer pointing at itself"
   (with-gensyms [fnn]
     `(defn ~fnn ~sig
       (let [[self ~fnn]] ~@body))))
 
-(defmacro rerun [&rest args]
-  `(run self ~@args))
 
-(defmacro rerun-in [time order &rest args]
-  `(run-in ~time ~order self ~@args))
+(defmacro -acid-time [time order]
+  "compute the time defined by the time/order"
 
-(defmacro do [&rest body]
-  `(run (defns [] ~@body)))
+  (cond [(= order 'miliseconds) (* time 0.001)]
+        [(= order 'miliseconds) (* time 0.001)]
+        [(= order 'seconds)     (* time 1)]
+        [(= order 'second)      (* time 1)]
+        [(= order 'minutes)     (* time 60)]
+        [(= order 'minute)      (* time 60)]
+        [(= order 'hours)       (* time 3600)]
+        [(= order 'hour)        (* time 3600)]))
 
-(defmacro do-in [time order &rest body]
-  `(run-in ~time ~order (defns [] ~@body)))
+(defmacro schedule [func &rest args]
+  "Run a function async-like"
+  `(.call-soon loop ~func ~@args))
 
-(defmacro do-every [time order &rest body]
-  `(do ~@body (rerun-in ~time ~order)))
+(defmacro schedule-in [time order func &rest args]
+  "Run a function in a few time"
+  `(.call-later loop (-acid-time ~time ~order) ~func ~@args))
+
+(defmacro reschedule [&rest args]
+  "rerun the current function (requires defns)"
+  `(schedule self ~@args))
+
+(defmacro reschedule-in [time order &rest args]
+  "rerun the current function (requires defns) in time"
+  `(schedule-in ~time ~order self ~@args))
+
+(defmacro run [&rest body]
+  "run some code async'd"
+  `(schedule (defns [] ~@body)))
+
+(defmacro run-in [time order &rest body]
+  "run some code later"
+  `(schedule-in ~time ~order (defns [] ~@body)))
+
+(defmacro run-every [time order &rest body]
+  "run some code once in a while"
+  `(run ~@body (reschedule-in ~time ~order)))
+
+
+(defmacro/g! -emit [obj event e]
+  "Given the defaultdict of handlers, handle emit"
+  `(for [~g!handler (get ~obj ~event)]
+     (apply loop.call-soon [~g!handler ~e])))
+
+(defmacro -on [obj event &rest body]
+  "Given the defaultdict of handlers, handle register"
+  `(.append (get ~obj ~event)
+    (fn [event] ~@body)))
+
+(defmacro/g! emit [event e]
+  `(-emit loop.handlers ~event ~e))
+
+(defmacro on [event &rest body]
+  `(-on loop.handlers ~event ~@body))

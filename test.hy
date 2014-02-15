@@ -2,7 +2,10 @@
 
 
 (trip
-  (run (defns [x]
-         (print (% "Hello, %s" (str x)))
-         (rerun (+ x 1)))
-       0))
+  (on :startup (run-in 5 seconds (emit :do-things nil)))
+  (on :startup (print "Starting up"))
+
+  (on :do-things (print "Doing things!"))
+  (on :do-things (print (* 2 2)))
+
+  (emit :startup nil))
