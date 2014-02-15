@@ -4,49 +4,47 @@
 
 
 (defmacro/g! trip [&rest body]
-  `(do
+  `(progn ;; XXX: Uh, this is horseshit. (progn) is going away.
+    ;;            this needs to be a recursive-replace for sub-do
+    ;;            or something.
     (import collections asyncio)
     (let [[loop (.get-event-loop asyncio)]]
       (setattr loop "handlers" (.defaultdict collections list))
       ~@body
-      (emit :startup loop)
       (.run-forever loop))))
 
-(defmacro stream [client remote port]
-  `(.run-until-complete loop
-    (.create-connection loop ~client ~remote ~port)))
+(defmacro -acid-time [time order]
+  (cond [(= order 'seconds) (* time 1)]
+        [(= order 'second)  (* time 1)]
+        [(= order 'minutes) (* time 60)]
+        [(= order 'minute)  (* time 60)]
+        [(= order 'hours)   (* time 3600)]
+        [(= order 'hour)    (* time 3600)]))
 
-(defmacro every [time order &rest body]
+(defmacro run [func &rest args]
+  "Run a function async-like"
+  `(.call-soon loop ~func ~@args))
+
+(defmacro run-in [time order func &rest args]
+  "Run a function in a few time"
+  `(.call-later loop (-acid-time ~time ~order) ~func ~@args))
+
+(defmacro defns [sig &rest body]
   (with-gensyms [fnn]
-    (let [[s-time
-           (cond [(= order 'seconds) `(* ~time 1)]
-                 [(= order 'second)  `(* ~time 1)]
-                 [(= order 'minutes) `(* ~time 60)]
-                 [(= order 'minute)  `(* ~time 60)]
-                 [(= order 'hours)   `(* ~time 3600)]
-                 [(= order 'hour)    `(* ~time 3600)]
-                 [true (macro-error order "Unknown magnitude")])]]
-      `(do
-        (defn ~fnn []
-          (let [[self ~fnn]]
-            ~@body
-            (echo ~s-time)))
-        (.call-soon loop ~fnn)))))
+    `(defn ~fnn ~sig
+      (let [[self ~fnn]] ~@body))))
 
+(defmacro rerun [&rest args]
+  `(run self ~@args))
 
-(defmacro echo [time &rest args]
-  `(.call-later loop ~time self ~@args))
+(defmacro rerun-in [time order &rest args]
+  `(run-in ~time ~order self ~@args))
 
+(defmacro do [&rest body]
+  `(run (defns [] ~@body)))
 
-(defmacro on [event &rest body]
-  `(.append (get loop.handlers ~event)
-    (fn [event] ~@body)))
+(defmacro do-in [time order &rest body]
+  `(run-in ~time ~order (defns [] ~@body)))
 
-
-(defmacro run [&rest body]
-  `(.call-later loop (fn [] ~@body)))
-
-
-(defmacro/g! emit [event e]
-  `(for [~g!handler (get loop.handlers ~event)]
-    (apply loop.call-soon [~g!handler ~e])))
+(defmacro do-every [time order &rest body]
+  `(do ~@body (rerun-in ~time ~order)))
