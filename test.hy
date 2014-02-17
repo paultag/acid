@@ -1,22 +1,21 @@
 (require acid.language)
-
 (import [snitch.informants [pingable httpable]] random)
 
 
-(let [[*min-ping-length* (-acid-time 1 minute)]
-      [*max-ping-length* (-acid-time 10 minutes)]
-      [*sites* {"pault.ag" [pingable httpable]
-                "whube.com" [pingable httpable]
-                "lucifer.pault.ag" [pingable httpable]}]]
-  (trip
+(trip
+  (let [[*min-ping-length* (acid-time 1 minute)]
+        [*max-ping-length* (acid-time 10 minutes)]
+        [*sites* {"pault.ag" [pingable httpable]
+                  "whube.com" [pingable httpable]
+                  "lucifer.pault.ag" [pingable httpable]}]]
 
-    (on :startup
+    (on :startup  ;; start site checking
       (for [(, site checks) (.items *sites*)]
         (for [check checks]
           (emit :start-checking {:site site :check check}))))
 
     (on :start-checking
-      (.call-later loop (.randint random 0 30)
+      (schedule-in-seconds (.randint random 0 30)
         (defns [wait]
           (let [[(, is-up info) ((:check event) (:site event))]
                 [time (if is-up (* wait 2) (/ wait 2))]
@@ -30,7 +29,7 @@
                            :retry-delay retry-time
                            :info info})
 
-            (.call-later loop retry-time self retry-time))) 0))
+            (reschedule-in-seconds retry-time self retry-time))) 0))
 
     (on :update  ;; store the event in memory
       )

@@ -17,7 +17,7 @@
       (let [[self ~fnn]] ~@body))))
 
 
-(defmacro -acid-time [time order]
+(defmacro acid-time [time order]
   "compute the time defined by the time/order"
 
   (cond [(= order 'miliseconds) (* time 0.001)]
@@ -35,7 +35,10 @@
 
 (defmacro schedule-in [time order func &rest args]
   "Run a function in a few time"
-  `(.call-later loop (-acid-time ~time ~order) ~func ~@args))
+  `(schedule-in-seconds (acid-time ~time ~order) ~func ~@args))
+
+(defmacro schedule-in-seconds [time func &rest args]
+  `(.call-later loop ~time ~func ~@args))
 
 (defmacro reschedule [&rest args]
   "rerun the current function (requires defns)"
@@ -43,20 +46,24 @@
 
 (defmacro reschedule-in [time order &rest args]
   "rerun the current function (requires defns) in time"
-  `(schedule-in ~time ~order self ~@args))
+  `(reschedule-in-seconds (acid-time ~time ~order) ~@args))
+
+(defmacro reschedule-in-seconds [time &rest args]
+  `(schedule-in-seconds ~time self ~@args))
 
 (defmacro run [&rest body]
   "run some code async'd"
   `(schedule (defns [] ~@body)))
 
 (defmacro run-in [time order &rest body]
-  "run some code later"
-  `(schedule-in ~time ~order (defns [] ~@body)))
+  `(run-in-seconds (acid-time time order) ~@body))
+
+(defmacro run-in-seconds [time &rest body]
+  `(schedule-in ~time (defns [] ~@body)))
 
 (defmacro run-every [time order &rest body]
   "run some code once in a while"
   `(run ~@body (reschedule-in ~time ~order)))
-
 
 (defmacro/g! -emit [obj event e]
   "Given the defaultdict of handlers, handle emit"
