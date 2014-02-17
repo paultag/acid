@@ -15,7 +15,7 @@
           (emit :start-checking {:site site :check check}))))
 
     (on :start-checking
-      (schedule-in-seconds (.randint random 0 30)
+      (schedule-in-seconds (.randint random 0 60)
         (defns [wait]
           (let [[(, is-up info) ((:check event) (:site event))]
                 [time (if is-up (* wait 2) (/ wait 2))]
@@ -29,7 +29,7 @@
                            :retry-delay retry-time
                            :info info})
 
-            (reschedule-in-seconds retry-time self retry-time))) 0))
+            (reschedule-in-seconds retry-time retry-time))) 0))
 
     (on :update  ;; store the event in memory
       )
