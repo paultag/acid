@@ -1,6 +1,5 @@
 
 
-
 (defmacro/g! trip [&rest body]
   "Root node. Sets up the async world."
   `(do (import collections asyncio)
