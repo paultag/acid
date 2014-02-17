@@ -1,5 +1,6 @@
 (require acid.language)
 (import [snitch.informants [pingable httpable]]
+        [snitch.core [db]]
         random
         [datetime :as dt])
 
@@ -16,6 +17,8 @@
         (for [check checks]
           (emit :start-checking {:site site :check check}))))
 
+    (on :startup (print "snitchd online"))
+
     (on :start-checking
       (schedule-in-seconds (.randint random 0 60)
         (defns [wait]
@@ -29,19 +32,27 @@
                                   [true time])]]
 
             (emit :update {:site (:site event)
+                           :checked-at start
                            :check (:check event)
                            :runtime (- end start)
-                           :is-up is-up
+                           :failed (not is-up)
                            :retry-delay retry-time
                            :info info})
 
             (reschedule-in-seconds retry-time retry-time))) 0))
 
     (on :update  ;; store the event in memory
-      )
+      (let [[oid (.insert (get db "snitch")
+              {"checked_at" (:checked-at event)
+               "failed"     (:failed event)
+               "site"       (:site event)
+               "check"      (. (:check event) --name--)
+               "info"       (:info event)
+               "value"      (.total-seconds (:runtime event))})]]
+        (print "stored report as" oid)))
 
     (on :update  ;; This is debug information
-      (print (:site event) (:is-up event) (:info event)
+      (print (:site event) (:failed event) (:info event)
         "(done in" (:runtime event) "seconds)"
         "next check is in" (:retry-delay event) "seconds"))
 
