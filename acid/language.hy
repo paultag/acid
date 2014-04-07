@@ -34,7 +34,7 @@
   `(.call-soon loop ~func ~@args))
 
 (defmacro schedule-coroutine [func]
-  "run a coroutine"
+  "Run a coroutine"
   `(.run-until-complete loop ~func))
 
 (defmacro schedule-in [time order func &rest args]
