@@ -9,13 +9,18 @@
          (run (emit :startup nil))
          (.run-forever loop))))
 
-
 (defmacro defns [sig &rest body]
   "Define a function with a `self' pointer pointing at itself"
   (with-gensyms [fnn]
     `(defn ~fnn ~sig
       (let [[self ~fnn]] ~@body))))
 
+(defmacro defn/coroutine [fnn sig &rest body]
+  `(with-decorators asyncio.coroutine
+    (defn ~fnn ~sig ~@body)))
+
+(defmacro defer [&rest body]
+  `(yield-from ~@body))
 
 (defmacro acid-time [time order]
   "compute the time defined by the time/order"
