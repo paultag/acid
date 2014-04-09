@@ -15,12 +15,17 @@
     `(defn ~fnn ~sig
       (let [[self ~fnn]] ~@body))))
 
+(defmacro fn/coroutine [sig &rest body]
+  `(with-decorator asyncio.coroutine (fn ~sig ~@body)))
+
 (defmacro defn/coroutine [fnn sig &rest body]
-  `(with-decorators asyncio.coroutine
-    (defn ~fnn ~sig ~@body)))
+  `(setv ~fnn (fn/coroutine ~sig ~@body)))
 
 (defmacro go [&rest body]
   `(yield-from ~@body))
+
+(defmacro spawn [&rest body]
+  `(.async asyncio ~@body))
 
 (defmacro acid-time [time order]
   "compute the time defined by the time/order"
@@ -77,12 +82,12 @@
 (defmacro/g! -emit [obj event e]
   "Given the defaultdict of handlers, handle emit"
   `(for [~g!handler (get ~obj ~event)]
-     (apply loop.call-soon [~g!handler ~e])))
+     (spawn (~g!handler ~e))))
 
 (defmacro -on [obj event &rest body]
   "Given the defaultdict of handlers, handle register"
   `(.append (get ~obj ~event)
-    (fn [event] ~@body)))
+    (fn/coroutine [event] ~@body)))
 
 (defmacro/g! emit [event e]
   `(-emit loop.handlers ~event ~e))
