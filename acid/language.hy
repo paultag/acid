@@ -19,7 +19,7 @@
   `(with-decorators asyncio.coroutine
     (defn ~fnn ~sig ~@body)))
 
-(defmacro defer [&rest body]
+(defmacro go [&rest body]
   `(yield-from ~@body))
 
 (defmacro acid-time [time order]
