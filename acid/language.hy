@@ -24,6 +24,9 @@
 (defmacro go [&rest body]
   `(yield-from ~@body))
 
+(defmacro go-setv [name &rest body]
+  `(setv ~name (yield-from ~@body)))
+
 (defmacro spawn [&rest body]
   `(.async asyncio ~@body))
 
