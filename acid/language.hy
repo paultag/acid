@@ -97,3 +97,6 @@
 
 (defmacro on [event &rest body]
   `(-on loop.handlers ~event ~@body))
+
+(defmacro disown [&rest forms]
+  `(.async asyncio ((fn/coroutine [] ~@forms))))
